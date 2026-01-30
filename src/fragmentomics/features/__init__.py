@@ -2,6 +2,12 @@
 Feature extraction modules for cfDNA fragmentomics.
 """
 
+from fragmentomics.features.coverage import (
+    CoverageAnalyzer,
+    CoverageBin,
+    CoverageProfile,
+    compute_coverage,
+)
 from fragmentomics.features.gc import (
     GCBiasProfile,
     GCCorrector,
@@ -42,4 +48,9 @@ __all__ = [
     "NucleosomeAnalyzer",
     "WPSProfile",
     "compute_wps",
+    # Coverage/CNV
+    "CoverageAnalyzer",
+    "CoverageBin",
+    "CoverageProfile",
+    "compute_coverage",
 ]
