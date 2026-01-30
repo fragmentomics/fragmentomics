@@ -2,10 +2,10 @@
 
 > **The definitive open-source toolkit for cfDNA fragmentomics analysis**
 
-[![PyPI version](https://badge.fury.io/py/fragmentomics.svg)](https://badge.fury.io/py/fragmentomics)
-[![Tests](https://github.com/fragmentomics/fragmentomics/workflows/Tests/badge.svg)](https://github.com/fragmentomics/fragmentomics/actions)
-[![Documentation](https://img.shields.io/badge/docs-mkdocs-blue)](https://fragmentomics.github.io/fragmentomics)
+[![Tests](https://github.com/fragmentomics/fragmentomics/actions/workflows/test.yml/badge.svg)](https://github.com/fragmentomics/fragmentomics/actions/workflows/test.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 **From BAM to biological insight in minutes.**
 

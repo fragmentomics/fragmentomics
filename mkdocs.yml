@@ -1,0 +1,76 @@
+site_name: FragMentor
+site_description: The definitive open-source toolkit for cfDNA fragmentomics analysis
+site_url: https://fragmentomics.github.io/fragmentomics
+repo_url: https://github.com/fragmentomics/fragmentomics
+repo_name: fragmentomics/fragmentomics
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - toc.follow
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: installation.md
+    - Quick Start: quickstart.md
+  - User Guide:
+    - Fragment Sizes: guide/sizes.md
+    - End Motifs: guide/motifs.md
+    - GC Correction: guide/gc.md
+    - Nucleosome Analysis: guide/nucleosome.md
+  - API Reference:
+    - Overview: api/index.md
+    - fragmentomics: api/main.md
+    - fragmentomics.features: api/features.md
+    - fragmentomics.io: api/io.md
+    - fragmentomics.viz: api/viz.md
+  - CLI Reference: cli.md
+  - Contributing: contributing.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/fragmentomics/fragmentomics
