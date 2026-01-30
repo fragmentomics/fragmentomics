@@ -105,4 +105,8 @@ Thumbs.db
 *.fasta.fai
 output/
 results/
-data/
+/data/
+
+# Generated test data
+tests/data/*.bam
+tests/data/*.bai
