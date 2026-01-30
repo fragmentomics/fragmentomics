@@ -7,9 +7,21 @@ from fragmentomics.features.sizes import (
     SizeDistribution,
     analyze_sizes,
 )
+from fragmentomics.features.motifs import (
+    EndMotifAnalyzer,
+    EndMotifProfile,
+    analyze_end_motifs,
+    ALL_4MERS,
+)
 
 __all__ = [
+    # Size analysis
     "FragmentSizeAnalyzer",
     "SizeDistribution",
     "analyze_sizes",
+    # Motif analysis
+    "EndMotifAnalyzer",
+    "EndMotifProfile",
+    "analyze_end_motifs",
+    "ALL_4MERS",
 ]
