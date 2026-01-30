@@ -13,6 +13,11 @@ from fragmentomics.features.motifs import (
     analyze_end_motifs,
     ALL_4MERS,
 )
+from fragmentomics.features.gc import (
+    GCCorrector,
+    GCBiasProfile,
+    compute_gc_bias,
+)
 
 __all__ = [
     # Size analysis
@@ -24,4 +29,8 @@ __all__ = [
     "EndMotifProfile",
     "analyze_end_motifs",
     "ALL_4MERS",
+    # GC correction
+    "GCCorrector",
+    "GCBiasProfile",
+    "compute_gc_bias",
 ]
