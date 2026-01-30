@@ -18,6 +18,11 @@ from fragmentomics.features.gc import (
     GCBiasProfile,
     compute_gc_bias,
 )
+from fragmentomics.features.nucleosome import (
+    NucleosomeAnalyzer,
+    WPSProfile,
+    compute_wps,
+)
 
 __all__ = [
     # Size analysis
@@ -33,4 +38,8 @@ __all__ = [
     "GCCorrector",
     "GCBiasProfile",
     "compute_gc_bias",
+    # Nucleosome positioning
+    "NucleosomeAnalyzer",
+    "WPSProfile",
+    "compute_wps",
 ]
