@@ -10,12 +10,11 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Union, Tuple
 
 import numpy as np
-from numpy.typing import NDArray
-from scipy import signal, ndimage
 import pysam
+from numpy.typing import NDArray
+from scipy import ndimage, signal
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +28,11 @@ NUCLEOSOME_REPEAT = NUCLEOSOME_SIZE + LINKER_SIZE  # ~167bp
 class WPSProfile:
     """
     Windowed Protection Score profile for a genomic region.
-    
+
     WPS measures the difference between fragments spanning a position
     (protective) and fragments with endpoints at that position (cutting).
     High WPS indicates nucleosome protection; low WPS indicates accessible DNA.
-    
+
     Attributes
     ----------
     positions : NDArray
@@ -49,21 +48,21 @@ class WPSProfile:
     end : int
         End position
     """
-    
+
     positions: NDArray
     wps: NDArray
     smoothed_wps: NDArray
     chrom: str
     start: int
     end: int
-    
+
     # Derived metrics
     mean_wps: float = 0.0
     std_wps: float = 0.0
     peak_positions: NDArray = field(default_factory=lambda: np.array([]))
     trough_positions: NDArray = field(default_factory=lambda: np.array([]))
     periodicity: float = 0.0
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -76,7 +75,7 @@ class WPSProfile:
             "n_troughs": len(self.trough_positions),
             "periodicity": self.periodicity,
         }
-    
+
     def summary(self) -> str:
         """Return human-readable summary."""
         return (
@@ -92,10 +91,10 @@ class WPSProfile:
 class NucleosomeAnalyzer:
     """
     Analyzer for nucleosome positioning using cfDNA fragments.
-    
+
     Computes Windowed Protection Score (WPS) and identifies nucleosome
     positions based on fragment coverage patterns.
-    
+
     Parameters
     ----------
     window_size : int, default 120
@@ -108,14 +107,14 @@ class NucleosomeAnalyzer:
         Bandwidth for Gaussian smoothing
     min_mapq : int, default 30
         Minimum mapping quality
-        
+
     Examples
     --------
     >>> analyzer = NucleosomeAnalyzer()
     >>> profile = analyzer.compute_wps("sample.bam", "chr1", 1000000, 1001000)
     >>> print(f"Found {len(profile.peak_positions)} nucleosomes")
     """
-    
+
     def __init__(
         self,
         window_size: int = 120,
@@ -129,17 +128,17 @@ class NucleosomeAnalyzer:
         self.max_fragment_size = max_fragment_size
         self.smoothing_bandwidth = smoothing_bandwidth
         self.min_mapq = min_mapq
-    
+
     def compute_wps(
         self,
-        bam_path: Union[str, Path],
+        bam_path: str | Path,
         chrom: str,
         start: int,
         end: int,
     ) -> WPSProfile:
         """
         Compute Windowed Protection Score for a genomic region.
-        
+
         Parameters
         ----------
         bam_path : str or Path
@@ -150,7 +149,7 @@ class NucleosomeAnalyzer:
             Start position
         end : int
             End position
-            
+
         Returns
         -------
         WPSProfile
@@ -158,60 +157,61 @@ class NucleosomeAnalyzer:
         """
         bam_path = Path(bam_path)
         region_size = end - start
-        
+
         # Initialize arrays for fragment tracking
         protection = np.zeros(region_size, dtype=np.int32)  # Spanning fragments
-        cutting = np.zeros(region_size, dtype=np.int32)     # Endpoint fragments
-        
+        cutting = np.zeros(region_size, dtype=np.int32)  # Endpoint fragments
+
         with pysam.AlignmentFile(str(bam_path), "rb") as bam:
             for read in bam.fetch(chrom, start, end):
                 if not self._is_valid_read(read):
                     continue
-                
+
                 frag_start = read.reference_start
                 frag_end = frag_start + abs(read.template_length)
                 frag_size = frag_end - frag_start
-                
+
                 # Filter by size (mononucleosome)
-                if frag_size < self.min_fragment_size or frag_size > self.max_fragment_size:
+                if (
+                    frag_size < self.min_fragment_size
+                    or frag_size > self.max_fragment_size
+                ):
                     continue
-                
+
                 # Convert to local coordinates
                 local_start = max(0, frag_start - start)
                 local_end = min(region_size, frag_end - start)
-                
+
                 # Protection: positions covered by fragment body
                 if local_end > local_start:
                     protection[local_start:local_end] += 1
-                
+
                 # Cutting: fragment endpoints
                 if 0 <= frag_start - start < region_size:
                     cutting[frag_start - start] += 1
                 if 0 <= frag_end - start < region_size:
                     cutting[frag_end - start] += 1
-        
+
         # Compute WPS: protection - cutting (windowed)
         half_window = self.window_size // 2
         wps = np.zeros(region_size, dtype=np.float64)
-        
+
         for i in range(half_window, region_size - half_window):
-            window_protection = protection[i - half_window:i + half_window].sum()
-            window_cutting = cutting[i - half_window:i + half_window].sum()
+            window_protection = protection[i - half_window : i + half_window].sum()
+            window_cutting = cutting[i - half_window : i + half_window].sum()
             wps[i] = window_protection - window_cutting
-        
+
         # Smooth WPS
         smoothed_wps = ndimage.gaussian_filter1d(wps, sigma=self.smoothing_bandwidth)
-        
+
         # Find peaks (nucleosome centers) and troughs (linkers)
-        peak_positions, trough_positions = self._find_peaks_troughs(
-            smoothed_wps, start
-        )
-        
+        peak_positions, trough_positions = self._find_peaks_troughs(smoothed_wps, start)
+
         # Compute periodicity
         periodicity = self._compute_periodicity(peak_positions)
-        
+
         positions = np.arange(start, end)
-        
+
         return WPSProfile(
             positions=positions,
             wps=wps,
@@ -225,7 +225,7 @@ class NucleosomeAnalyzer:
             trough_positions=trough_positions,
             periodicity=periodicity,
         )
-    
+
     def _is_valid_read(self, read: pysam.AlignedSegment) -> bool:
         """Check if read is valid."""
         if read.is_unmapped:
@@ -239,12 +239,12 @@ class NucleosomeAnalyzer:
         if read.mapping_quality < self.min_mapq:
             return False
         return True
-    
+
     def _find_peaks_troughs(
         self,
         wps: NDArray,
         offset: int = 0,
-    ) -> Tuple[NDArray, NDArray]:
+    ) -> tuple[NDArray, NDArray]:
         """Find nucleosome peaks and linker troughs."""
         # Find peaks
         peaks, _ = signal.find_peaks(
@@ -252,40 +252,40 @@ class NucleosomeAnalyzer:
             distance=100,  # Minimum distance between nucleosomes
             prominence=np.std(wps) * 0.5,
         )
-        
+
         # Find troughs (inverse peaks)
         troughs, _ = signal.find_peaks(
             -wps,
             distance=50,
             prominence=np.std(wps) * 0.3,
         )
-        
+
         return peaks + offset, troughs + offset
-    
+
     def _compute_periodicity(self, peak_positions: NDArray) -> float:
         """Compute nucleosome periodicity from peak positions."""
         if len(peak_positions) < 3:
             return 0.0
-        
+
         # Compute inter-peak distances
         distances = np.diff(peak_positions)
-        
+
         if len(distances) == 0:
             return 0.0
-        
+
         # Return median distance (robust to outliers)
         return float(np.median(distances))
-    
+
     def compute_coverage_profile(
         self,
-        bam_path: Union[str, Path],
+        bam_path: str | Path,
         chrom: str,
         start: int,
         end: int,
     ) -> NDArray[np.int32]:
         """
         Compute simple fragment coverage profile.
-        
+
         Parameters
         ----------
         bam_path : str or Path
@@ -296,7 +296,7 @@ class NucleosomeAnalyzer:
             Start position
         end : int
             End position
-            
+
         Returns
         -------
         NDArray
@@ -305,23 +305,26 @@ class NucleosomeAnalyzer:
         bam_path = Path(bam_path)
         region_size = end - start
         coverage = np.zeros(region_size, dtype=np.int32)
-        
+
         with pysam.AlignmentFile(str(bam_path), "rb") as bam:
             for read in bam.fetch(chrom, start, end):
                 if not self._is_valid_read(read):
                     continue
-                
+
                 frag_start = max(0, read.reference_start - start)
-                frag_end = min(region_size, read.reference_start + abs(read.template_length) - start)
-                
+                frag_end = min(
+                    region_size,
+                    read.reference_start + abs(read.template_length) - start,
+                )
+
                 if frag_end > frag_start:
                     coverage[frag_start:frag_end] += 1
-        
+
         return coverage
 
 
 def compute_wps(
-    bam_path: Union[str, Path],
+    bam_path: str | Path,
     chrom: str,
     start: int,
     end: int,
@@ -329,7 +332,7 @@ def compute_wps(
 ) -> WPSProfile:
     """
     Convenience function to compute WPS.
-    
+
     Parameters
     ----------
     bam_path : str or Path
@@ -342,7 +345,7 @@ def compute_wps(
         End position
     window_size : int, default 120
         WPS window size
-        
+
     Returns
     -------
     WPSProfile

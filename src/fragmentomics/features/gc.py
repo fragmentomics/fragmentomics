@@ -10,12 +10,11 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
+import pysam
 from numpy.typing import NDArray
 from scipy import interpolate, stats
-import pysam
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ logger = logging.getLogger(__name__)
 class GCBiasProfile:
     """
     GC bias profile for a sample.
-    
+
     Attributes
     ----------
     gc_bins : NDArray
@@ -40,7 +39,7 @@ class GCBiasProfile:
     gc_dropout : float
         Fraction of GC bins with < 10% expected coverage
     """
-    
+
     gc_bins: NDArray
     observed_counts: NDArray
     expected_counts: NDArray
@@ -49,7 +48,7 @@ class GCBiasProfile:
     gc_dropout: float = 0.0
     mean_gc: float = 0.0
     std_gc: float = 0.0
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -59,7 +58,7 @@ class GCBiasProfile:
             "std_gc": self.std_gc,
             "n_bins": len(self.gc_bins),
         }
-    
+
     def summary(self) -> str:
         """Return human-readable summary."""
         return (
@@ -75,10 +74,10 @@ class GCBiasProfile:
 class GCCorrector:
     """
     GC bias correction for cfDNA data.
-    
+
     Implements LOESS-based GC correction similar to methods used in
     copy number analysis and cfDNA studies.
-    
+
     Parameters
     ----------
     n_bins : int, default 101
@@ -87,14 +86,14 @@ class GCCorrector:
         LOESS smoothing span
     min_count : int, default 10
         Minimum fragments per bin for reliable correction
-        
+
     Examples
     --------
     >>> corrector = GCCorrector()
     >>> profile = corrector.compute_bias("sample.bam", "reference.fa")
     >>> corrected_counts = corrector.correct(raw_counts, gc_values)
     """
-    
+
     def __init__(
         self,
         n_bins: int = 101,
@@ -105,7 +104,7 @@ class GCCorrector:
         self.smoothing_span = smoothing_span
         self.min_count = min_count
         self.gc_bins = np.linspace(0, 1, n_bins)
-    
+
     def compute_gc_content(
         self,
         sequence: str,
@@ -113,24 +112,24 @@ class GCCorrector:
         """Compute GC content of a sequence."""
         if not sequence:
             return 0.0
-        gc = sum(1 for b in sequence.upper() if b in 'GC')
+        gc = sum(1 for b in sequence.upper() if b in "GC")
         return gc / len(sequence)
-    
+
     def compute_bias_from_fragments(
         self,
         gc_values: NDArray[np.float64],
-        weights: Optional[NDArray] = None,
+        weights: NDArray | None = None,
     ) -> GCBiasProfile:
         """
         Compute GC bias profile from fragment GC values.
-        
+
         Parameters
         ----------
         gc_values : NDArray
             GC content for each fragment (0-1)
         weights : NDArray, optional
             Weights for each fragment
-            
+
         Returns
         -------
         GCBiasProfile
@@ -138,43 +137,39 @@ class GCCorrector:
         """
         if weights is None:
             weights = np.ones_like(gc_values)
-        
+
         # Bin fragments by GC content
         bin_edges = np.linspace(0, 1, self.n_bins + 1)
         observed, _ = np.histogram(gc_values, bins=bin_edges, weights=weights)
-        
+
         # Expected under uniform distribution
         expected = np.full(self.n_bins, len(gc_values) / self.n_bins)
-        
+
         # Compute correction factors
         # Avoid division by zero
-        with np.errstate(divide='ignore', invalid='ignore'):
-            correction = np.where(
-                observed > self.min_count,
-                expected / observed,
-                1.0
-            )
-        
+        with np.errstate(divide="ignore", invalid="ignore"):
+            correction = np.where(observed > self.min_count, expected / observed, 1.0)
+
         # Smooth correction factors with LOESS-like approach
         correction_smooth = self._smooth_corrections(correction, observed)
-        
+
         # Compute statistics
         mean_gc = float(np.average(gc_values, weights=weights))
-        std_gc = float(np.sqrt(np.average((gc_values - mean_gc)**2, weights=weights)))
-        
+        std_gc = float(np.sqrt(np.average((gc_values - mean_gc) ** 2, weights=weights)))
+
         # R² of GC vs coverage
         valid = observed > self.min_count
         if valid.sum() > 2:
             slope, intercept, r, p, se = stats.linregress(
                 self.gc_bins[valid], observed[valid]
             )
-            r_squared = r ** 2
+            r_squared = r**2
         else:
             r_squared = 0.0
-        
+
         # GC dropout (bins with very low coverage)
         gc_dropout = np.mean(observed < expected * 0.1)
-        
+
         return GCBiasProfile(
             gc_bins=self.gc_bins,
             observed_counts=observed,
@@ -185,7 +180,7 @@ class GCCorrector:
             mean_gc=mean_gc,
             std_gc=std_gc,
         )
-    
+
     def _smooth_corrections(
         self,
         corrections: NDArray,
@@ -194,34 +189,35 @@ class GCCorrector:
         """Apply smoothing to correction factors."""
         # Use weighted moving average
         valid = counts > self.min_count
-        
+
         if valid.sum() < 5:
             return corrections
-        
+
         # Interpolate over invalid regions
         x_valid = self.gc_bins[valid]
         y_valid = corrections[valid]
-        
+
         # Create interpolation function
         f = interpolate.interp1d(
-            x_valid, y_valid,
-            kind='linear',
+            x_valid,
+            y_valid,
+            kind="linear",
             bounds_error=False,
-            fill_value=(y_valid[0], y_valid[-1])
+            fill_value=(y_valid[0], y_valid[-1]),
         )
-        
+
         smoothed = f(self.gc_bins)
-        
+
         # Apply additional smoothing
         window = max(3, int(self.n_bins * self.smoothing_span / 10))
         if window % 2 == 0:
             window += 1
-        
+
         kernel = np.ones(window) / window
-        smoothed = np.convolve(smoothed, kernel, mode='same')
-        
+        smoothed = np.convolve(smoothed, kernel, mode="same")
+
         return smoothed
-    
+
     def correct_values(
         self,
         values: NDArray,
@@ -230,7 +226,7 @@ class GCCorrector:
     ) -> NDArray:
         """
         Apply GC correction to values.
-        
+
         Parameters
         ----------
         values : NDArray
@@ -239,7 +235,7 @@ class GCCorrector:
             GC content for each value
         profile : GCBiasProfile
             Pre-computed bias profile
-            
+
         Returns
         -------
         NDArray
@@ -248,21 +244,21 @@ class GCCorrector:
         # Map GC values to correction factors
         bin_indices = np.digitize(gc_values, np.linspace(0, 1, self.n_bins + 1)) - 1
         bin_indices = np.clip(bin_indices, 0, self.n_bins - 1)
-        
+
         corrections = profile.correction_factors[bin_indices]
-        
+
         return values * corrections
-    
+
     def compute_fragment_gc(
         self,
-        bam_path: Union[str, Path],
-        reference_path: Union[str, Path],
-        region: Optional[str] = None,
+        bam_path: str | Path,
+        reference_path: str | Path,
+        region: str | None = None,
         max_fragments: int = 100000,
     ) -> NDArray[np.float64]:
         """
         Compute GC content for fragments in a BAM file.
-        
+
         Parameters
         ----------
         bam_path : str or Path
@@ -273,7 +269,7 @@ class GCCorrector:
             Genomic region to analyze
         max_fragments : int, default 100000
             Maximum fragments to sample
-            
+
         Returns
         -------
         NDArray
@@ -281,41 +277,41 @@ class GCCorrector:
         """
         bam_path = Path(bam_path)
         reference_path = Path(reference_path)
-        
+
         gc_values = []
         ref = pysam.FastaFile(str(reference_path))
-        
+
         try:
             with pysam.AlignmentFile(str(bam_path), "rb") as bam:
                 iterator = bam.fetch(region=region) if region else bam.fetch()
-                
+
                 for read in iterator:
                     if not self._is_valid_read(read):
                         continue
-                    
+
                     # Get fragment sequence
                     try:
                         chrom = read.reference_name
                         start = read.reference_start
                         end = start + abs(read.template_length)
-                        
+
                         if end - start > 1000 or end - start < 50:
                             continue
-                        
+
                         seq = ref.fetch(chrom, start, end)
                         gc = self.compute_gc_content(seq)
                         gc_values.append(gc)
-                        
+
                     except Exception:
                         continue
-                    
+
                     if len(gc_values) >= max_fragments:
                         break
         finally:
             ref.close()
-        
+
         return np.array(gc_values, dtype=np.float64)
-    
+
     def _is_valid_read(self, read: pysam.AlignedSegment) -> bool:
         """Check if read is valid for GC analysis."""
         if read.is_unmapped:
@@ -332,14 +328,14 @@ class GCCorrector:
 
 
 def compute_gc_bias(
-    bam_path: Union[str, Path],
-    reference_path: Union[str, Path],
-    region: Optional[str] = None,
+    bam_path: str | Path,
+    reference_path: str | Path,
+    region: str | None = None,
     max_fragments: int = 100000,
 ) -> GCBiasProfile:
     """
     Convenience function to compute GC bias profile.
-    
+
     Parameters
     ----------
     bam_path : str or Path
@@ -350,7 +346,7 @@ def compute_gc_bias(
         Genomic region
     max_fragments : int, default 100000
         Max fragments to sample
-        
+
     Returns
     -------
     GCBiasProfile

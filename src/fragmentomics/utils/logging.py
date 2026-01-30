@@ -4,16 +4,15 @@ Logging configuration for fragmentomics.
 
 import logging
 import sys
-from typing import Optional
 
 
 def setup_logging(
     level: int = logging.INFO,
-    format_string: Optional[str] = None,
+    format_string: str | None = None,
 ) -> None:
     """
     Configure logging for fragmentomics.
-    
+
     Parameters
     ----------
     level : int, default logging.INFO
@@ -23,7 +22,7 @@ def setup_logging(
     """
     if format_string is None:
         format_string = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
-    
+
     logging.basicConfig(
         level=level,
         format=format_string,
@@ -35,12 +34,12 @@ def setup_logging(
 def get_logger(name: str) -> logging.Logger:
     """
     Get a logger for a module.
-    
+
     Parameters
     ----------
     name : str
         Logger name (usually __name__)
-        
+
     Returns
     -------
     logging.Logger

@@ -2,26 +2,26 @@
 Feature extraction modules for cfDNA fragmentomics.
 """
 
-from fragmentomics.features.sizes import (
-    FragmentSizeAnalyzer,
-    SizeDistribution,
-    analyze_sizes,
+from fragmentomics.features.gc import (
+    GCBiasProfile,
+    GCCorrector,
+    compute_gc_bias,
 )
 from fragmentomics.features.motifs import (
+    ALL_4MERS,
     EndMotifAnalyzer,
     EndMotifProfile,
     analyze_end_motifs,
-    ALL_4MERS,
-)
-from fragmentomics.features.gc import (
-    GCCorrector,
-    GCBiasProfile,
-    compute_gc_bias,
 )
 from fragmentomics.features.nucleosome import (
     NucleosomeAnalyzer,
     WPSProfile,
     compute_wps,
+)
+from fragmentomics.features.sizes import (
+    FragmentSizeAnalyzer,
+    SizeDistribution,
+    analyze_sizes,
 )
 
 __all__ = [
