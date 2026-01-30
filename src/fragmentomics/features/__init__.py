@@ -8,6 +8,13 @@ from fragmentomics.features.coverage import (
     CoverageProfile,
     compute_coverage,
 )
+from fragmentomics.features.delfi import (
+    DELFIAnalyzer,
+    DELFIBin,
+    DELFIProfile,
+    compute_delfi_profile,
+    create_healthy_reference,
+)
 from fragmentomics.features.gc import (
     GCBiasProfile,
     GCCorrector,
@@ -53,4 +60,10 @@ __all__ = [
     "CoverageBin",
     "CoverageProfile",
     "compute_coverage",
+    # DELFI (Cristiano et al.)
+    "DELFIAnalyzer",
+    "DELFIBin",
+    "DELFIProfile",
+    "compute_delfi_profile",
+    "create_healthy_reference",
 ]
