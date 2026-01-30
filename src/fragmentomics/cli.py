@@ -319,5 +319,124 @@ def info(
         console.print(table)
 
 
+@app.command()
+def batch(
+    bam_files: list[Path] = typer.Argument(..., help="Input BAM/CRAM files"),
+    output: Path = typer.Option("./batch_output", "-o", "--output", help="Output directory"),
+    threads: int = typer.Option(1, "-t", "--threads", help="Number of parallel threads"),
+    features: str = typer.Option("sizes", "-f", "--features", help="Features to extract"),
+):
+    """
+    Batch analyze multiple BAM files.
+
+    Example:
+        fragmentomics batch sample1.bam sample2.bam -o results/
+        fragmentomics batch *.bam -o results/ --threads 8
+    """
+    import json
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+
+    console.print("[bold blue]🧬 FragMentor[/bold blue] — Batch Analysis")
+    console.print()
+
+    # Validate inputs
+    valid_files = []
+    for f in bam_files:
+        if f.exists():
+            valid_files.append(f)
+        else:
+            console.print(f"[yellow]Warning:[/yellow] File not found: {f}")
+
+    if not valid_files:
+        console.print("[red]Error:[/red] No valid BAM files found")
+        raise typer.Exit(1)
+
+    console.print(f"Processing {len(valid_files)} files with {threads} thread(s)\n")
+
+    output.mkdir(parents=True, exist_ok=True)
+
+    def analyze_file(bam_path: Path) -> dict:
+        """Analyze a single BAM file."""
+        from fragmentomics.features.sizes import FragmentSizeAnalyzer
+        from fragmentomics.io.bam import BamReader
+
+        try:
+            reader = BamReader(bam_path)
+            sizes = reader.extract_sizes()
+
+            if len(sizes) == 0:
+                return {"sample": bam_path.stem, "error": "No fragments extracted"}
+
+            analyzer = FragmentSizeAnalyzer()
+            dist = analyzer.analyze(sizes)
+
+            result = dist.to_dict()
+            result["sample"] = bam_path.stem
+            result["path"] = str(bam_path)
+            return result
+
+        except Exception as e:
+            return {"sample": bam_path.stem, "error": str(e)}
+
+    results = []
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Analyzing...", total=len(valid_files))
+
+        if threads == 1:
+            # Sequential processing
+            for bam_path in valid_files:
+                result = analyze_file(bam_path)
+                results.append(result)
+                progress.advance(task)
+                if "error" not in result:
+                    console.print(f"  [green]✓[/green] {bam_path.name}")
+                else:
+                    console.print(f"  [red]✗[/red] {bam_path.name}: {result['error']}")
+        else:
+            # Parallel processing
+            with ProcessPoolExecutor(max_workers=threads) as executor:
+                futures = {executor.submit(analyze_file, f): f for f in valid_files}
+                for future in as_completed(futures):
+                    bam_path = futures[future]
+                    result = future.result()
+                    results.append(result)
+                    progress.advance(task)
+                    if "error" not in result:
+                        console.print(f"  [green]✓[/green] {bam_path.name}")
+                    else:
+                        console.print(f"  [red]✗[/red] {bam_path.name}: {result['error']}")
+
+    # Save combined results
+    output_file = output / "batch_results.json"
+    with open(output_file, "w") as f:
+        json.dump(results, f, indent=2)
+
+    # Also save as CSV
+    csv_file = output / "batch_results.csv"
+    successful = [r for r in results if "error" not in r]
+    if successful:
+        import csv
+        fieldnames = list(successful[0].keys())
+        with open(csv_file, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(successful)
+        console.print(f"\n[green]✓[/green] Results saved to: {csv_file}")
+
+    console.print(f"[green]✓[/green] JSON saved to: {output_file}")
+
+    # Summary
+    n_success = len([r for r in results if "error" not in r])
+    n_error = len(results) - n_success
+    console.print(f"\n[bold]Summary:[/bold] {n_success} succeeded, {n_error} failed")
+
+
 if __name__ == "__main__":
     app()
