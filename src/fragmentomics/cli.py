@@ -320,6 +320,106 @@ def info(
 
 
 @app.command()
+def delfi(
+    bam_path: Path = typer.Argument(..., help="Input BAM/CRAM file"),
+    output: Path = typer.Option("./output", "-o", "--output", help="Output directory"),
+    bin_size: int = typer.Option(5_000_000, "--bin-size", help="Bin size in bp (default: 5Mb)"),
+    plot: bool = typer.Option(True, "--plot/--no-plot", help="Generate genome-wide plot"),
+):
+    """
+    DELFI-style genome-wide fragmentation analysis.
+
+    Computes short/long fragment ratios in genomic bins, following
+    Cristiano et al. 2019 (Nature). Outputs ML-ready feature vectors.
+
+    Example:
+        fragmentomics delfi sample.bam -o results/
+    """
+    console.print("[bold blue]🧬 FragMentor[/bold blue] — DELFI Analysis")
+    console.print()
+
+    if not bam_path.exists():
+        console.print(f"[red]Error:[/red] BAM file not found: {bam_path}")
+        raise typer.Exit(1)
+
+    output.mkdir(parents=True, exist_ok=True)
+
+    import numpy as np
+
+    from fragmentomics.features.delfi import DELFIAnalyzer
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task("Computing DELFI profile...", total=None)
+
+        analyzer = DELFIAnalyzer(bin_size=bin_size)
+        profile = analyzer.analyze(bam_path)
+
+    # Print summary
+    console.print("\n[bold]DELFI Fragmentation Profile[/bold]")
+    console.print("=" * 40)
+    console.print(f"Bins: {len(profile.bins):,} x {bin_size // 1_000_000}Mb")
+    console.print(f"Total fragments: {profile.total_fragments:,}")
+    console.print(f"  Short (100-150bp): {profile.total_short:,}")
+    console.print(f"  Long (151-220bp): {profile.total_long:,}")
+    console.print(f"Genome-wide S/L ratio: {profile.genome_wide_ratio:.3f}")
+
+    # Save results
+    stats_file = output / "delfi_profile.json"
+    with open(stats_file, "w") as f:
+        json.dump(profile.to_dict(), f, indent=2)
+    console.print(f"\n[green]✓[/green] Profile saved to: {stats_file}")
+
+    # Save feature vectors
+    features_file = output / "delfi_features.npz"
+    np.savez(
+        features_file,
+        ratios=profile.to_ratio_vector(),
+        coverages=profile.to_coverage_vector(),
+        full_features=profile.to_feature_vector(),
+    )
+    console.print(f"[green]✓[/green] Features saved to: {features_file}")
+
+    # Generate plot
+    if plot:
+        try:
+            import matplotlib.pyplot as plt
+
+            fig, axes = plt.subplots(2, 1, figsize=(14, 6), sharex=True)
+
+            # Get chromosome boundaries for x-axis
+            ratios = profile.to_ratio_vector()
+            coverages = profile.to_coverage_vector()
+            x = np.arange(len(ratios))
+
+            # Ratio plot
+            axes[0].plot(x, ratios, linewidth=0.5, color="steelblue")
+            axes[0].set_ylabel("Short/Long Ratio")
+            axes[0].set_title(f"DELFI Profile: {bam_path.name}")
+            axes[0].axhline(profile.genome_wide_ratio, color="red", linestyle="--",
+                           label=f"Genome mean: {profile.genome_wide_ratio:.3f}")
+            axes[0].legend()
+
+            # Coverage plot
+            axes[1].plot(x, coverages, linewidth=0.5, color="darkgreen")
+            axes[1].set_ylabel("Coverage (frags/Mb)")
+            axes[1].set_xlabel("Genomic bin")
+
+            plt.tight_layout()
+
+            plot_file = output / "delfi_profile.png"
+            plt.savefig(plot_file, dpi=150)
+            plt.close()
+            console.print(f"[green]✓[/green] Plot saved to: {plot_file}")
+
+        except ImportError:
+            console.print("[yellow]Warning:[/yellow] matplotlib not available, skipping plot")
+
+
+@app.command()
 def batch(
     bam_files: list[Path] = typer.Argument(..., help="Input BAM/CRAM files"),
     output: Path = typer.Option("./batch_output", "-o", "--output", help="Output directory"),
