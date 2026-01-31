@@ -336,3 +336,67 @@ def save_figure(
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=dpi, bbox_inches="tight", **kwargs)
+
+
+def plot_delfi_comparison(
+    profiles: list,
+    labels: list[str],
+    colors: list[str] | None = None,
+    ax: Axes | None = None,
+    title: str | None = None,
+    figsize: tuple[float, float] = (14, 5),
+) -> tuple[Figure, Axes]:
+    """
+    Compare DELFI profiles from multiple samples.
+
+    Overlays short/long ratios across the genome for healthy vs cancer
+    or other comparisons.
+
+    Parameters
+    ----------
+    profiles : list[DELFIProfile]
+        DELFI profiles to compare
+    labels : list[str]
+        Sample labels
+    colors : list[str], optional
+        Colors for each profile
+    ax : Axes, optional
+        Matplotlib axes
+    title : str, optional
+        Plot title
+    figsize : tuple, default (14, 5)
+        Figure size
+
+    Returns
+    -------
+    tuple[Figure, Axes]
+    """
+    if len(profiles) != len(labels):
+        raise ValueError("Number of profiles must match number of labels")
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = ax.get_figure()
+
+    if colors is None:
+        cmap = plt.cm.tab10
+        colors = [cmap(i) for i in range(len(profiles))]
+
+    for profile, label, color in zip(profiles, labels, colors):
+        ratios = profile.to_ratio_vector()
+        x = np.arange(len(ratios))
+        ax.plot(x, ratios, label=label, color=color, linewidth=0.8, alpha=0.8)
+
+    ax.set_xlabel("Genomic Bin", fontsize=12)
+    ax.set_ylabel("Short/Long Ratio", fontsize=12)
+    ax.set_title(
+        title or "DELFI Fragmentation Profile Comparison",
+        fontsize=14,
+        fontweight="bold",
+    )
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc="upper right")
+
+    plt.tight_layout()
+    return fig, ax
