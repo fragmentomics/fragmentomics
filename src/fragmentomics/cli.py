@@ -420,6 +420,65 @@ def delfi(
 
 
 @app.command()
+def coverage(
+    bam_path: Path = typer.Argument(..., help="Input BAM/CRAM file"),
+    output: Path = typer.Option("./output", "-o", "--output", help="Output directory"),
+    bin_size: int = typer.Option(100_000, "--bin-size", help="Bin size in bp (default: 100kb)"),
+    chrom: str | None = typer.Option(None, "--chrom", "-c", help="Specific chromosome"),
+):
+    """
+    Compute binned coverage profile for copy number analysis.
+
+    Outputs normalized coverage with log2 ratios suitable for CNV calling.
+
+    Example:
+        fragmentomics coverage sample.bam -o results/ --bin-size 50000
+    """
+    console.print("[bold blue]🧬 FragMentor[/bold blue] — Coverage Analysis")
+    console.print()
+
+    if not bam_path.exists():
+        console.print(f"[red]Error:[/red] BAM file not found: {bam_path}")
+        raise typer.Exit(1)
+
+    output.mkdir(parents=True, exist_ok=True)
+
+    import numpy as np
+
+    from fragmentomics.features.coverage import CoverageAnalyzer
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task("Computing coverage...", total=None)
+
+        analyzer = CoverageAnalyzer(bin_size=bin_size)
+        profile = analyzer.compute_coverage(bam_path, chrom=chrom)
+
+    # Print summary
+    console.print("\n[bold]Coverage Profile[/bold]")
+    console.print("=" * 40)
+    console.print(f"Bins: {len(profile.bins):,} x {bin_size // 1000}kb")
+    console.print(f"Total reads: {profile.total_reads:,}")
+    console.print(f"Median coverage: {profile.median_coverage:.1f}")
+    console.print(f"MAD: {profile.mad:.1f}")
+
+    # Save results
+    stats_file = output / "coverage_profile.json"
+    with open(stats_file, "w") as f:
+        json.dump(profile.to_dict(), f, indent=2)
+    console.print(f"\n[green]✓[/green] Profile saved to: {stats_file}")
+
+    # Save arrays
+    positions, raw_counts, log2_ratios = profile.to_array()
+    arrays_file = output / "coverage_data.npz"
+    np.savez(arrays_file, positions=positions, counts=raw_counts, log2_ratios=log2_ratios)
+    console.print(f"[green]✓[/green] Data saved to: {arrays_file}")
+
+
+@app.command()
 def batch(
     bam_files: list[Path] = typer.Argument(..., help="Input BAM/CRAM files"),
     output: Path = typer.Option("./batch_output", "-o", "--output", help="Output directory"),
