@@ -62,18 +62,26 @@ docker pull ghcr.io/fragmentomics/fragmentomics:latest
 ### Command Line
 
 ```bash
-# Analyze fragment sizes
+# Analyze fragment sizes (the basics)
 fragmentomics sizes sample.bam -o results/
 
-# Extract end motifs
+# DELFI-style genome-wide profiling (Cristiano et al. 2019)
+fragmentomics delfi sample.bam -o results/
+
+# Coverage/CNV analysis
+fragmentomics coverage sample.bam -o results/ --bin-size 100000
+
+# End motif analysis
 fragmentomics motifs sample.bam -r hg38.fa -o results/
+
+# Batch processing (parallel)
+fragmentomics batch *.bam -o results/ --threads 8
 
 # Extract ALL features
 fragmentomics extract sample.bam -r hg38.fa -o features/
-
-# Run cancer detection model
-fragmentomics predict sample.bam --model cancer_v1
 ```
+
+**35x faster than FinaleToolkit** — see [benchmarks](benchmarks/).
 
 ### Python API
 
