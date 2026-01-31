@@ -204,3 +204,57 @@ class TestExtractCommand:
             text=True,
         )
         assert result.returncode == 0
+
+
+class TestReportCommand:
+    """Test the report generation command."""
+
+    def test_report_help(self):
+        """Test report help."""
+        result = subprocess.run(
+            ["fragmentomics", "report", "--help"],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+        assert "delfi" in result.stdout.lower()
+        assert "prediction" in result.stdout.lower()
+
+    def test_report_generation(self, ensure_test_data, tmp_path):
+        """Test basic report generation."""
+        output = tmp_path / "test_report.html"
+        result = subprocess.run(
+            [
+                "fragmentomics", "report",
+                str(HEALTHY_BAM),
+                "-o", str(output),
+                "--sections", "sizes,delfi,prediction",
+                "-n", "Test_Sample",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, f"CLI failed: {result.stderr}"
+        assert output.exists()
+        content = output.read_text()
+        assert "Test_Sample" in content
+        assert "DELFI" in content
+        assert "Cancer Risk" in content
+
+    def test_report_all_sections(self, ensure_test_data, tmp_path):
+        """Test report with all sections."""
+        output = tmp_path / "full_report.html"
+        result = subprocess.run(
+            [
+                "fragmentomics", "report",
+                str(HEALTHY_BAM),
+                "-o", str(output),
+                "--sections", "all",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, f"CLI failed: {result.stderr}"
+        assert output.exists()
+        # Check file size is reasonable (has embedded plots)
+        assert output.stat().st_size > 100_000

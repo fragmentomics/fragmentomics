@@ -31,10 +31,12 @@ FragMentor extracts these features and makes them accessible for research and cl
 | Feature | Description |
 |---------|-------------|
 | 📏 **Fragment Sizes** | Distribution analysis, peaks, ratios, periodicity |
+| 🔬 **DELFI Profile** | Genome-wide fragmentation (Cristiano et al. 2019) |
+| 🎯 **Cancer Detection** | ML-based cancer probability from cfDNA patterns |
 | 🧩 **End Motifs** | 4-mer frequencies at fragment ends |
 | 📊 **Coverage** | Copy number estimation with GC correction |
+| 📋 **Clinical Reports** | Self-contained HTML reports with visualizations |
 | 🛡️ **Nucleosomes** | Windowed Protection Score (WPS) |
-| 🎯 **Regions** | Analyze custom genomic regions (BED) |
 | 🤖 **ML-Ready** | Built-in feature extraction for machine learning |
 | ⚡ **Fast** | Optimized with Polars — 10x faster than pandas |
 | 🐳 **Containerized** | Docker support for reproducibility |
@@ -62,22 +64,25 @@ docker pull ghcr.io/fragmentomics/fragmentomics:latest
 ### Command Line
 
 ```bash
-# Analyze fragment sizes (the basics)
+# Generate clinical report (QC, sizes, DELFI, cancer prediction)
+fragmentomics report sample.bam -o report.html
+
+# Full report with all sections (requires reference for motifs)
+fragmentomics report sample.bam -r hg38.fa -o report.html --sections all
+
+# Select specific analyses
+fragmentomics report sample.bam --sections sizes,delfi,prediction
+
+# Individual analyses
 fragmentomics sizes sample.bam -o results/
-
-# DELFI-style genome-wide profiling (Cristiano et al. 2019)
 fragmentomics delfi sample.bam -o results/
-
-# Coverage/CNV analysis
 fragmentomics coverage sample.bam -o results/ --bin-size 100000
-
-# End motif analysis
 fragmentomics motifs sample.bam -r hg38.fa -o results/
 
 # Batch processing (parallel)
 fragmentomics batch *.bam -o results/ --threads 8
 
-# Extract ALL features
+# Extract ALL features for ML
 fragmentomics extract sample.bam -r hg38.fa -o features/
 ```
 
@@ -86,7 +91,7 @@ fragmentomics extract sample.bam -r hg38.fa -o features/
 ### Python API
 
 ```python
-from fragmentomics import FragMentor
+from fragmentomics import FragMentor, ReportGenerator
 
 # Initialize analyzer
 fm = FragMentor("sample.bam", reference="hg38.fa")
@@ -94,19 +99,21 @@ fm = FragMentor("sample.bam", reference="hg38.fa")
 # Fragment size analysis
 sizes = fm.sizes()
 print(f"Median: {sizes.median:.0f} bp")
-print(f"Mode: {sizes.mode:.0f} bp")
+print(f"Short fragment ratio: {sizes.ratio_short:.1%}")
 
-# End motif analysis
-motifs = fm.end_motifs(k=4)
-print(f"Top motif: {motifs.most_common(1)}")
+# DELFI fragmentation profile
+delfi = fm.delfi()
+print(f"Genome-wide S/L ratio: {delfi.genome_wide_ratio:.3f}")
 
-# Extract all features for ML
-features = fm.extract_features()
-features.to_parquet("sample_features.parquet")
+# Cancer prediction
+prediction = fm.predict()
+print(f"Cancer probability: {prediction.probability:.1%}")
+print(f"Prediction: {prediction.prediction} ({prediction.confidence})")
 
-# Cancer prediction (with pre-trained model)
-prediction = fm.predict("cancer_v1")
-print(f"Cancer probability: {prediction.score:.1%}")
+# Generate clinical report
+rg = ReportGenerator("sample.bam", reference="hg38.fa")
+rg.add_sizes().add_delfi().add_prediction().add_coverage()
+rg.generate("report.html")
 ```
 
 ---

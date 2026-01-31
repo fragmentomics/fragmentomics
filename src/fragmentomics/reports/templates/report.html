@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - {{ sample_name }}</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-800);
+            background: var(--gray-50);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header .subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .header-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header-meta-item {
+            font-size: 0.9rem;
+        }
+
+        .header-meta-item .label {
+            opacity: 0.8;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .header-meta-item .value {
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        /* Navigation */
+        .nav {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--gray-600);
+            margin-bottom: 0.75rem;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            color: var(--primary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            background: var(--gray-100);
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--gray-200);
+        }
+
+        /* Sections */
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-100);
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        /* QC Flags */
+        .qc-flags {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .qc-flag {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 8px;
+            background: var(--gray-50);
+        }
+
+        .qc-flag-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.75rem;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .qc-flag.pass .qc-flag-icon {
+            background: #dcfce7;
+            color: var(--success);
+        }
+
+        .qc-flag.warn .qc-flag-icon {
+            background: #fef3c7;
+            color: var(--warning);
+        }
+
+        .qc-flag.fail .qc-flag-icon {
+            background: #fee2e2;
+            color: var(--danger);
+        }
+
+        .qc-flag-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--gray-800);
+        }
+
+        .qc-flag-value {
+            font-size: 0.8rem;
+            color: var(--gray-600);
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric {
+            background: var(--gray-50);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: var(--gray-600);
+            margin-top: 0.25rem;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        th {
+            background: var(--gray-50);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--gray-600);
+        }
+
+        tr:hover td {
+            background: var(--gray-50);
+        }
+
+        /* Plots */
+        .plot-container {
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .plot-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Interpretation */
+        .interpretation {
+            background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+            border-left: 4px solid var(--primary);
+            padding: 1rem 1.5rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 1.5rem;
+        }
+
+        .interpretation-title {
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .interpretation-text {
+            color: var(--gray-700);
+            font-size: 0.95rem;
+        }
+
+        /* Two-column layout for motifs */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Prediction Card */
+        .prediction-card {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .prediction-card.success {
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            border: 2px solid var(--success);
+        }
+
+        .prediction-card.warning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid var(--warning);
+        }
+
+        .prediction-card.danger {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border: 2px solid var(--danger);
+        }
+
+        .prediction-result {
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .prediction-emoji {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .prediction-label {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .prediction-card.success .prediction-label { color: var(--success); }
+        .prediction-card.warning .prediction-label { color: var(--warning); }
+        .prediction-card.danger .prediction-label { color: var(--danger); }
+
+        .probability-bar {
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .probability-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--gray-600);
+            margin-bottom: 0.5rem;
+        }
+
+        .probability-track {
+            height: 12px;
+            background: var(--gray-200);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .probability-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.3s ease;
+        }
+
+        .prediction-card.success .probability-fill { background: var(--success); }
+        .prediction-card.warning .probability-fill { background: var(--warning); }
+        .prediction-card.danger .probability-fill { background: var(--danger); }
+
+        .prediction-confidence {
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        /* Feature importance */
+        .feature-table {
+            margin-top: 1rem;
+        }
+
+        .feature-table td:first-child {
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray-600);
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .container {
+                max-width: 100%;
+                padding: 0;
+            }
+
+            .section {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid var(--gray-200);
+            }
+
+            .nav {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🧬 {{ title }}</h1>
+            <p class="subtitle">cfDNA Fragmentomics Analysis Report</p>
+            <div class="header-meta">
+                <div class="header-meta-item">
+                    <div class="label">Sample</div>
+                    <div class="value">{{ sample_name }}</div>
+                </div>
+                <div class="header-meta-item">
+                    <div class="label">BAM File</div>
+                    <div class="value">{{ bam_path }}</div>
+                </div>
+                <div class="header-meta-item">
+                    <div class="label">Reference</div>
+                    <div class="value">{{ reference }}</div>
+                </div>
+                <div class="header-meta-item">
+                    <div class="label">Generated</div>
+                    <div class="value">{{ generated_at }}</div>
+                </div>
+                <div class="header-meta-item">
+                    <div class="label">FragMentor Version</div>
+                    <div class="value">{{ version }}</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <div class="nav-title">Jump to Section</div>
+            <div class="nav-links">
+                {% for section in sections %}
+                <a href="#{{ section.id }}" class="nav-link">{{ section.title }}</a>
+                {% endfor %}
+            </div>
+        </nav>
+
+        <!-- Sections -->
+        {% for section in sections %}
+        <section class="section" id="{{ section.id }}">
+            <div class="section-header">
+                <div class="section-icon">
+                    {% if section.type == 'qc' %}📋
+                    {% elif section.type == 'sizes' %}📏
+                    {% elif section.type == 'delfi' %}🔬
+                    {% elif section.type == 'prediction' %}🎯
+                    {% elif section.type == 'motifs' %}🧩
+                    {% elif section.type == 'coverage' %}📊
+                    {% else %}📄{% endif %}
+                </div>
+                <h2 class="section-title">{{ section.title }}</h2>
+            </div>
+
+            {% if section.type == 'qc' %}
+            <!-- QC Section -->
+            <div class="qc-flags">
+                {% for flag in section.qc_flags %}
+                <div class="qc-flag {{ flag.status }}">
+                    <div class="qc-flag-icon">
+                        {% if flag.status == 'pass' %}✓
+                        {% elif flag.status == 'warn' %}!
+                        {% else %}✗{% endif %}
+                    </div>
+                    <div>
+                        <div class="qc-flag-name">{{ flag.name }}</div>
+                        <div class="qc-flag-value">{{ flag.value }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for metric, value in section.metrics %}
+                        <tr>
+                            <td>{{ metric }}</td>
+                            <td>{{ value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% elif section.type == 'sizes' %}
+            <!-- Sizes Section -->
+            <div class="plot-container">
+                <img src="{{ section.plot }}" alt="Fragment Size Distribution">
+            </div>
+
+            <div class="metrics-grid">
+                {% for metric, value in section.metrics[:6] %}
+                <div class="metric">
+                    <div class="metric-value">{{ value }}</div>
+                    <div class="metric-label">{{ metric }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for metric, value in section.metrics %}
+                        <tr>
+                            <td>{{ metric }}</td>
+                            <td>{{ value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if section.interpretation %}
+            <div class="interpretation">
+                <div class="interpretation-title">📝 Interpretation</div>
+                <p class="interpretation-text">{{ section.interpretation }}</p>
+            </div>
+            {% endif %}
+
+            {% elif section.type == 'delfi' %}
+            <!-- DELFI Section -->
+            <div class="plot-container">
+                <img src="{{ section.plot }}" alt="DELFI Fragmentation Profile">
+            </div>
+
+            <div class="metrics-grid">
+                {% for metric, value in section.metrics %}
+                <div class="metric">
+                    <div class="metric-value">{{ value }}</div>
+                    <div class="metric-label">{{ metric }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if section.interpretation %}
+            <div class="interpretation">
+                <div class="interpretation-title">📝 Interpretation</div>
+                <p class="interpretation-text">{{ section.interpretation }}</p>
+            </div>
+            {% endif %}
+
+            {% elif section.type == 'prediction' %}
+            <!-- Prediction Section -->
+            <div class="prediction-card {{ section.status_class }}">
+                <div class="prediction-result">
+                    <div class="prediction-emoji">
+                        {% if section.status_class == 'success' %}🟢
+                        {% elif section.status_class == 'warning' %}🟠
+                        {% else %}🔴{% endif %}
+                    </div>
+                    <div class="prediction-label">
+                        {% for metric, value in section.metrics %}
+                            {% if metric == 'Prediction' %}{{ value }}{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="probability-bar">
+                    <div class="probability-label">
+                        <span>Healthy</span>
+                        <span>Cancer</span>
+                    </div>
+                    <div class="probability-track">
+                        <div class="probability-fill" style="width: {{ (section.probability * 100)|round }}%"></div>
+                    </div>
+                    <div class="prediction-confidence">
+                        Probability: {{ "%.1f"|format(section.probability * 100) }}%
+                    </div>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h4 style="margin-bottom: 1rem; color: var(--gray-700);">Summary</h4>
+                    <div class="table-container">
+                        <table>
+                            <tbody>
+                                {% for metric, value in section.metrics %}
+                                <tr>
+                                    <td>{{ metric }}</td>
+                                    <td>{{ value }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="margin-bottom: 1rem; color: var(--gray-700);">Feature Importance</h4>
+                    <div class="table-container feature-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Feature</th>
+                                    <th>Impact</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for feature, importance in section.feature_table %}
+                                <tr>
+                                    <td>{{ feature }}</td>
+                                    <td>{{ importance }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {% if section.interpretation %}
+            <div class="interpretation">
+                <div class="interpretation-title">⚕️ Clinical Note</div>
+                <p class="interpretation-text">{{ section.interpretation }}</p>
+            </div>
+            {% endif %}
+
+            {% elif section.type == 'motifs' %}
+            <!-- Motifs Section -->
+            <div class="plot-container">
+                <img src="{{ section.plot }}" alt="End Motif Frequencies">
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h4 style="margin-bottom: 1rem; color: var(--gray-700);">Diversity Metrics</h4>
+                    <div class="table-container">
+                        <table>
+                            <tbody>
+                                {% for metric, value in section.metrics %}
+                                <tr>
+                                    <td>{{ metric }}</td>
+                                    <td>{{ value }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="margin-bottom: 1rem; color: var(--gray-700);">Top 10 Motifs</h4>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Motif</th>
+                                    <th>Frequency</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for motif, freq in section.top_motifs %}
+                                <tr>
+                                    <td><code>{{ motif }}</code></td>
+                                    <td>{{ freq }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {% if section.interpretation %}
+            <div class="interpretation">
+                <div class="interpretation-title">📝 Interpretation</div>
+                <p class="interpretation-text">{{ section.interpretation }}</p>
+            </div>
+            {% endif %}
+
+            {% elif section.type == 'coverage' %}
+            <!-- Coverage Section -->
+            <div class="plot-container">
+                <img src="{{ section.plot }}" alt="Genome-Wide Coverage Profile">
+            </div>
+
+            <div class="metrics-grid">
+                {% for metric, value in section.metrics %}
+                <div class="metric">
+                    <div class="metric-value">{{ value }}</div>
+                    <div class="metric-label">{{ metric }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if section.interpretation %}
+            <div class="interpretation">
+                <div class="interpretation-title">📝 Interpretation</div>
+                <p class="interpretation-text">{{ section.interpretation }}</p>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <!-- Generic Section -->
+            {% if section.plot %}
+            <div class="plot-container">
+                <img src="{{ section.plot }}" alt="{{ section.title }}">
+            </div>
+            {% endif %}
+
+            {% if section.metrics %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for metric, value in section.metrics %}
+                        <tr>
+                            <td>{{ metric }}</td>
+                            <td>{{ value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            {% endif %}
+        </section>
+        {% endfor %}
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Generated by <a href="https://github.com/fragmentomics/fragmentomics">FragMentor</a> v{{ version }}</p>
+            <p>© {{ generated_at[:4] }} FragMentor Contributors</p>
+        </footer>
+    </div>
+</body>
+</html>

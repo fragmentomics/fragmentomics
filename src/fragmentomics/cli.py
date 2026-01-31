@@ -665,5 +665,114 @@ def batch(
     console.print(f"\n[bold]Summary:[/bold] {n_success} succeeded, {n_error} failed")
 
 
+@app.command()
+def report(
+    bam_path: Path = typer.Argument(..., help="Input BAM/CRAM file"),
+    output: Path = typer.Option(
+        None, "-o", "--output", help="Output file (default: <sample>_report.html)"
+    ),
+    reference: Path | None = typer.Option(
+        None, "-r", "--reference", help="Reference genome FASTA (required for motifs)"
+    ),
+    title: str | None = typer.Option(None, "-t", "--title", help="Report title"),
+    sample_name: str | None = typer.Option(
+        None, "-n", "--name", help="Sample name (default: BAM filename)"
+    ),
+    sections: str = typer.Option(
+        "all",
+        "-s",
+        "--sections",
+        help="Sections: all, sizes, delfi, prediction, motifs, coverage (comma-separated)",
+    ),
+    format: str = typer.Option(
+        "html", "-f", "--format", help="Output format: html or pdf"
+    ),
+):
+    """
+    Generate a comprehensive clinical analysis report.
+
+    Creates an HTML or PDF report with QC metrics, fragment size distribution,
+    DELFI fragmentation profile, cancer risk prediction, and coverage analysis.
+
+    Examples:
+        fragmentomics report sample.bam -o report.html
+        fragmentomics report sample.bam -r hg38.fa --sections all
+        fragmentomics report sample.bam --sections sizes,delfi,prediction
+        fragmentomics report sample.bam -o report.pdf --format pdf
+    """
+    console.print("[bold blue]🧬 FragMentor[/bold blue] — Report Generation")
+    console.print()
+
+    # Validate input
+    if not bam_path.exists():
+        console.print(f"[red]Error:[/red] BAM file not found: {bam_path}")
+        raise typer.Exit(1)
+
+    if reference and not reference.exists():
+        console.print(f"[red]Error:[/red] Reference file not found: {reference}")
+        raise typer.Exit(1)
+
+    # Set default output
+    if output is None:
+        output = Path(f"{bam_path.stem}_report.{format}")
+
+    # Parse sections
+    section_list = [s.strip().lower() for s in sections.split(",")]
+    include_all = "all" in section_list
+
+    # Import here for fast CLI startup
+    from fragmentomics.reports import ReportGenerator
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Initializing...", total=None)
+
+        # Create report generator
+        rg = ReportGenerator(
+            bam_path,
+            reference=reference,
+            sample_name=sample_name,
+        )
+
+        # Add sections based on selection
+        if include_all or "sizes" in section_list:
+            progress.update(task, description="Analyzing fragment sizes...")
+            rg.add_sizes()
+
+        if include_all or "delfi" in section_list:
+            progress.update(task, description="Computing DELFI profile...")
+            rg.add_delfi()
+
+        if include_all or "prediction" in section_list:
+            progress.update(task, description="Running cancer prediction...")
+            rg.add_prediction()
+
+        if (include_all or "motifs" in section_list) and reference:
+            progress.update(task, description="Analyzing end motifs...")
+            rg.add_motifs()
+        elif "motifs" in section_list and not reference:
+            console.print(
+                "[yellow]Warning:[/yellow] Skipping motifs (requires reference genome)"
+            )
+
+        if include_all or "coverage" in section_list:
+            progress.update(task, description="Analyzing coverage...")
+            rg.add_coverage()
+
+        # Generate report
+        progress.update(task, description="Generating report...")
+        output_path = rg.generate(output, format=format, title=title)
+
+    console.print()
+    console.print(f"[green]✓[/green] Report generated: [bold]{output_path}[/bold]")
+
+    # Show file size
+    size_kb = output_path.stat().st_size / 1024
+    console.print(f"  Size: {size_kb:.1f} KB")
+
+
 if __name__ == "__main__":
     app()

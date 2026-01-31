@@ -400,3 +400,270 @@ def plot_delfi_comparison(
 
     plt.tight_layout()
     return fig, ax
+
+
+def plot_motif_frequencies(
+    motifs,
+    ax: Axes | None = None,
+    top_n: int = 20,
+    title: str | None = None,
+    color: str = COLORS["primary"],
+    figsize: tuple[float, float] = (12, 5),
+) -> tuple[Figure, Axes]:
+    """
+    Plot end motif frequency distribution.
+
+    Parameters
+    ----------
+    motifs : MotifProfile
+        Motif profile from analysis
+    ax : Axes, optional
+        Matplotlib axes
+    top_n : int, default 20
+        Number of top motifs to display
+    title : str, optional
+        Plot title
+    color : str, default blue
+        Bar color
+    figsize : tuple, default (12, 5)
+        Figure size
+
+    Returns
+    -------
+    tuple[Figure, Axes]
+    """
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = ax.get_figure()
+
+    # Get top motifs
+    top_motifs = motifs.top_motifs(n=top_n)
+    motif_names = [m for m, _ in top_motifs]
+    frequencies = [f for _, f in top_motifs]
+
+    # Create bar plot
+    x = np.arange(len(motif_names))
+    bars = ax.bar(x, frequencies, color=color, alpha=0.8, edgecolor="white")
+
+    # Highlight specific motifs of interest
+    highlight_motifs = {"CCCA", "CCAG", "CAAA", "AAAA"}
+    for i, (motif, bar) in enumerate(zip(motif_names, bars)):
+        if motif in highlight_motifs:
+            bar.set_color(COLORS["secondary"])
+            bar.set_alpha(1.0)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(motif_names, rotation=45, ha="right", fontsize=9, family="monospace")
+    ax.set_xlabel("End Motif (4-mer)", fontsize=12)
+    ax.set_ylabel("Frequency", fontsize=12)
+    ax.set_title(
+        title or "Top End Motif Frequencies",
+        fontsize=14,
+        fontweight="bold",
+    )
+    ax.grid(True, alpha=0.3, axis="y")
+
+    # Add diversity annotation
+    props = dict(boxstyle="round", facecolor="white", alpha=0.8, edgecolor=COLORS["grid"])
+    stats_text = f"Shannon Diversity: {motifs.diversity:.3f}\nUnique Motifs: {motifs.n_unique_motifs}"
+    ax.text(
+        0.98, 0.95, stats_text,
+        transform=ax.transAxes,
+        fontsize=9,
+        verticalalignment="top",
+        horizontalalignment="right",
+        bbox=props,
+    )
+
+    plt.tight_layout()
+    return fig, ax
+
+
+def plot_delfi_profile(
+    delfi,
+    ax: Axes | None = None,
+    title: str | None = None,
+    figsize: tuple[float, float] = (14, 4),
+) -> tuple[Figure, Axes]:
+    """
+    Plot DELFI fragmentation profile (short/long ratios across genome).
+
+    Parameters
+    ----------
+    delfi : DELFIProfile
+        DELFI profile from analysis
+    ax : Axes, optional
+        Matplotlib axes
+    title : str, optional
+        Plot title
+    figsize : tuple, default (14, 4)
+        Figure size
+
+    Returns
+    -------
+    tuple[Figure, Axes]
+    """
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = ax.get_figure()
+
+    # Get ratios
+    ratios = delfi.to_ratio_vector()
+    n_bins = len(ratios)
+    x = np.arange(n_bins)
+
+    # Color by chromosome (alternating)
+    colors = []
+    current_chrom = None
+    color_idx = 0
+    color_palette = [COLORS["primary"], "#6366f1"]
+
+    for bin_obj in delfi.bins:
+        if bin_obj.chrom != current_chrom:
+            current_chrom = bin_obj.chrom
+            color_idx = 1 - color_idx
+        colors.append(color_palette[color_idx])
+
+    # Scatter plot
+    ax.scatter(x, ratios, c=colors, s=15, alpha=0.7, edgecolors="none")
+
+    # Reference line at healthy baseline (~0.4)
+    ax.axhline(0.4, color="green", linestyle="--", linewidth=1, alpha=0.7, label="Healthy baseline")
+
+    # Highlight elevated regions (potential tumor signal)
+    elevated_mask = ratios > 0.6
+    if np.any(elevated_mask):
+        ax.scatter(
+            x[elevated_mask], ratios[elevated_mask],
+            c=COLORS["short"], s=20, alpha=0.9,
+            edgecolors="darkred", linewidth=0.5,
+            label="Elevated (>0.6)"
+        )
+
+    # Add chromosome labels
+    chrom_positions = {}
+    for i, bin_obj in enumerate(delfi.bins):
+        if bin_obj.chrom not in chrom_positions:
+            chrom_positions[bin_obj.chrom] = []
+        chrom_positions[bin_obj.chrom].append(i)
+
+    for chrom, positions in chrom_positions.items():
+        mid = positions[len(positions) // 2]
+        label = chrom.replace("chr", "")
+        ax.text(mid, ax.get_ylim()[0] if ax.get_ylim()[0] else 0, label,
+                fontsize=7, ha="center", va="top", alpha=0.7)
+
+    ax.set_xlabel("Genomic Position (5Mb bins)", fontsize=12)
+    ax.set_ylabel("Short/Long Ratio", fontsize=12)
+    ax.set_title(
+        title or "DELFI Fragmentation Profile",
+        fontsize=14,
+        fontweight="bold",
+    )
+    ax.set_ylim(0, max(1.0, ratios.max() * 1.1))
+    ax.grid(True, alpha=0.3, axis="y")
+    ax.legend(loc="upper right", fontsize=8)
+
+    plt.tight_layout()
+    return fig, ax
+
+
+def plot_coverage_profile(
+    coverage,
+    ax: Axes | None = None,
+    title: str | None = None,
+    color: str = COLORS["primary"],
+    show_chromosomes: bool = True,
+    figsize: tuple[float, float] = (14, 4),
+) -> tuple[Figure, Axes]:
+    """
+    Plot genome-wide coverage profile.
+
+    Parameters
+    ----------
+    coverage : CoverageProfile
+        Coverage profile from analysis
+    ax : Axes, optional
+        Matplotlib axes
+    title : str, optional
+        Plot title
+    color : str, default blue
+        Line/point color
+    show_chromosomes : bool, default True
+        Show chromosome boundaries
+    figsize : tuple, default (14, 4)
+        Figure size
+
+    Returns
+    -------
+    tuple[Figure, Axes]
+    """
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = ax.get_figure()
+
+    # Get coverage values from bins
+    positions, raw_counts, log2_ratios = coverage.to_array()
+    n_bins = len(positions)
+    x = np.arange(n_bins)
+
+    # Use pre-computed log2 ratios if available, else compute from raw counts
+    if np.any(log2_ratios != 0):
+        log2_ratio = log2_ratios
+    else:
+        median_cov = np.median(raw_counts)
+        if median_cov > 0:
+            log2_ratio = np.log2(raw_counts / median_cov + 1e-10)
+        else:
+            log2_ratio = np.zeros_like(raw_counts, dtype=float)
+
+    # Plot with alternating chromosome colors if available
+    if show_chromosomes and hasattr(coverage, "chrom_boundaries") and coverage.chrom_boundaries:
+        boundaries = coverage.chrom_boundaries
+        chrom_names = list(boundaries.keys())
+        colors_alt = [COLORS["primary"], "#6366f1"]  # Alternating colors
+
+        for i, chrom in enumerate(chrom_names):
+            start, end = boundaries[chrom]
+            chrom_x = x[start:end]
+            chrom_y = log2_ratio[start:end]
+            ax.scatter(
+                chrom_x, chrom_y,
+                c=colors_alt[i % 2],
+                s=2,
+                alpha=0.6,
+                rasterized=True,
+            )
+            # Add chromosome label
+            mid = (start + end) // 2
+            ax.text(
+                mid, -1.8,
+                chrom.replace("chr", ""),
+                fontsize=7,
+                ha="center",
+                va="top",
+            )
+    else:
+        ax.scatter(x, log2_ratio, c=color, s=2, alpha=0.6, rasterized=True)
+
+    # Reference lines
+    ax.axhline(0, color="black", linestyle="-", linewidth=0.5, alpha=0.5)
+    ax.axhline(0.58, color=COLORS["secondary"], linestyle="--", linewidth=0.5, alpha=0.5, label="Gain threshold")
+    ax.axhline(-1.0, color=COLORS["short"], linestyle="--", linewidth=0.5, alpha=0.5, label="Loss threshold")
+
+    ax.set_xlabel("Genomic Position (bins)", fontsize=12)
+    ax.set_ylabel("Log₂ Ratio", fontsize=12)
+    ax.set_title(
+        title or "Genome-Wide Coverage Profile",
+        fontsize=14,
+        fontweight="bold",
+    )
+    ax.set_ylim(-2, 2)
+    ax.grid(True, alpha=0.3, axis="y")
+    ax.legend(loc="upper right", fontsize=8)
+
+    plt.tight_layout()
+    return fig, ax
