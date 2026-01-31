@@ -479,6 +479,74 @@ def coverage(
 
 
 @app.command()
+def predict(
+    bam_path: Path = typer.Argument(..., help="Input BAM/CRAM file"),
+    output: Path = typer.Option(None, "-o", "--output", help="Output JSON file"),
+    threshold: float = typer.Option(0.5, "--threshold", help="Classification threshold"),
+    model: str = typer.Option("cancer_v1", "--model", "-m", help="Model name"),
+):
+    """
+    Predict cancer probability from cfDNA sample.
+
+    Uses fragmentomics features to estimate the likelihood that
+    a sample contains cancer-derived cfDNA.
+
+    Example:
+        fragmentomics predict sample.bam
+        fragmentomics predict sample.bam -o results/prediction.json
+    """
+    console.print("[bold blue]🧬 FragMentor[/bold blue] — Cancer Prediction")
+    console.print()
+
+    if not bam_path.exists():
+        console.print(f"[red]Error:[/red] BAM file not found: {bam_path}")
+        raise typer.Exit(1)
+
+    from fragmentomics.models import CancerDetector
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task("Extracting features...", total=None)
+        detector = CancerDetector(threshold=threshold)
+        result = detector.predict_from_bam(bam_path)
+
+    # Display result with color
+    if result.prediction == "cancer":
+        pred_color = "red"
+        emoji = "🔴"
+    else:
+        pred_color = "green"
+        emoji = "🟢"
+
+    console.print("\n[bold]Prediction Result[/bold]")
+    console.print("=" * 40)
+    console.print(f"{emoji} Prediction: [{pred_color}]{result.prediction.upper()}[/{pred_color}]")
+    console.print(f"   Probability: {result.probability:.1%}")
+    console.print(f"   Confidence: {result.confidence}")
+
+    # Show feature importance
+    console.print("\n[bold]Feature Contributions[/bold]")
+    sorted_imp = sorted(result.feature_importance.items(), key=lambda x: -x[1])
+    for feat, imp in sorted_imp[:5]:
+        bar = "█" * int(imp * 20)
+        console.print(f"   {feat:<20} {bar} {imp:.1%}")
+
+    # Save if output specified
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with open(output, "w") as f:
+            json.dump(result.to_dict(), f, indent=2)
+        console.print(f"\n[green]✓[/green] Result saved to: {output}")
+
+    # Return exit code based on prediction (useful for scripting)
+    if result.prediction == "cancer":
+        raise typer.Exit(1)
+
+
+@app.command()
 def batch(
     bam_files: list[Path] = typer.Argument(..., help="Input BAM/CRAM files"),
     output: Path = typer.Option("./batch_output", "-o", "--output", help="Output directory"),
